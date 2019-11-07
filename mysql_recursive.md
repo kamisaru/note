@@ -62,6 +62,50 @@ WHERE
 해당값이 없이 참조값만으로 재귀를 돌리려는 목적에는 맞지 않음.
 
 
+결국 function을 만듬.
+
+```
+CREATE FUNCTION find_lineage(_src VARCHAR(100)) RETURNS VARCHAR(1024)
+NOT DETERMINISTIC
+READS SQL DATA
+BEGIN
+	DECLARE _param TEXT;	-- 조건 변수
+	DECLARE _tbls TEXT;		-- 리턴할 테이블 모음
+
+	IF start_tbl IS NOT NULL AND LENGTH(start_tbl) > 0 THEN
+
+		SET _param := start_tbl;
+		SET _tbls := start_tbl;
+
+		lineage_loop : LOOP
+
+			SELECT GROUP_CONCAT(dest) INTO @res
+			FROM table
+			WHERE FIND_IN_SET(src, _param);
+
+			IF @res IS NOT NULL AND LENGTH(@res) > 0 THEN
+
+				SET _tbls := CONCAT(_tbls, ',', @res);
+				SET _param := @res;
+			ELSE
+
+				LEAVE lineage_loop;
+			END IF;
+
+		END LOOP lineage_loop;
+
+    RETURN _tbls;
+	ELSE
+
+		RETURN _tbls;
+	END IF ;
+END
+```
+
+그후 table return 이 되지 않는 관계로 불편하고 구려서 결국 사용은 하지 않는걸로...
+
+
+
 
 
 
