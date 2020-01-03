@@ -1,0 +1,221 @@
+
+docker image 검색 후 다운로드
+
+# local의 docker images 검색
+$ docker images
+ 
+ 
+# docker hub의 nginx image 검색
+$ docker search ngnix
+ 
+ 
+# nginx image pull
+$ docker image pull nginx
+docker run 
+
+# ngnix image를 데몬으로(-d) nainx-server이란 이름으로(--name) 실행
+$ docker run -d -p 8080:80 --name nginx-server nginx
+ 
+ 
+# 구동 확인
+$ docker ps
+nginx 설정
+
+# nginx-server 접속 하기
+$ docker exec -it nginx-server bash
+ 
+ 
+# nginx 설정파일 찾기
+root@4f8c75cf7178:~# find / -name nginx
+ 
+ 
+--결과
+/var/log/nginx
+/var/cache/nginx
+/etc/logrotate.d/nginx
+/etc/init.d/nginx
+/etc/default/nginx
+/etc/nginx
+/usr/lib/nginx
+/usr/sbin/nginx
+/usr/share/doc/nginx
+/usr/share/nginx
+ 
+ 
+root@4f8c75cf7178:~# cd /etc/nginx
+root@4f8c75cf7178:/etc/nginx# ls -al
+ 
+ 
+-- 결과
+total 48
+drwxr-xr-x 3 root root 4096 Dec 28 15:20 .
+drwxr-xr-x 1 root root 4096 Jan  3 09:50 ..
+drwxr-xr-x 2 root root 4096 Dec 28 15:20 conf.d
+-rw-r--r-- 1 root root 1007 Nov 19 12:50 fastcgi_params
+-rw-r--r-- 1 root root 2837 Nov 19 12:50 koi-utf
+-rw-r--r-- 1 root root 2223 Nov 19 12:50 koi-win
+-rw-r--r-- 1 root root 5231 Nov 19 12:50 mime.types
+lrwxrwxrwx 1 root root   22 Nov 19 12:50 modules -> /usr/lib/nginx/modules
+-rw-r--r-- 1 root root  643 Nov 19 12:50 nginx.conf
+-rw-r--r-- 1 root root  636 Nov 19 12:50 scgi_params
+-rw-r--r-- 1 root root  664 Nov 19 12:50 uwsgi_params
+-rw-r--r-- 1 root root 3610 Nov 19 12:50 win-utf
+docker vi 설치 
+
+root@4f8c75cf7178:/etc/nginx# apt-get update
+root@4f8c75cf7178:/etc/nginx# apt-get upgrade
+root@4f8c75cf7178:/etc/nginx# apt-get install vim
+nginx.conf 확인 
+
+root@4f8c75cf7178:/etc/nginx# vi nginx.conf
+nginx.conf 에 upstream 추가 
+
+root@4f8c75cf7178:/etc/nginx# vi nginx.conf
+ 
+ 
+http {
+    ...
+    upstream medic {
+        server 127.0.0.1:80;
+    }
+    ...
+}
+ conf.d/default.conf 에 http, https 설정 추가
+
+root@4f8c75cf7178:/etc/nginx# vi conf.d/default.conf
+ 
+ 
+ 
+ 
+...
+location / {
+    return 301 https://medic;
+}
+ 
+ 
+...
+ 
+ 
+server {
+  listen 443;
+ 
+  server_name localhost;
+  access_log /var/log/nginx/host.access.log main;
+ 
+  ssl                 on;
+  ssl_certificate     /app/nginx/conf/sslkey/star_11stcorp_com_chained_20201118.crt;
+  ssl_certificate_key /app/nginx/conf/sslkey/star_11stcorp_com_key_20201118.pem;
+ 
+  location / {
+    root /usr/share/nginx/html;
+    index index.html index.htm;
+ 
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+ 
+    proxy_pass http://medic;
+  }
+}
+docker openssl 설치 
+
+# etc/hosts 파일에 테스트용 도메인 추가.
+root@4f8c75cf7178:/etc/nginx# vi /etc/hosts
+ 
+ 
+ 
+ 
+127.0.0.1       medic.localhost.co.kr
+ 
+ 
+ 
+ 
+# 개인 키 파일 생성 (private key)
+root@4f8c75cf7178:/etc/nginx# openssl genrsa -out server.key 2048
+docker openssl 설치 
+
+root@4f8c75cf7178:/etc/nginx# apt-get install openssl
+docker openssl 설치 
+
+# 개인 키 파일 생성
+root@4f8c75cf7178:/etc/nginx# openssl genrsa -out server.key 2048
+ 
+ 
+ 
+ 
+-- 결과
+Generating RSA private key, 2048 bit long modulus (2 primes)
+..............................................................+++++
+................................+++++
+e is 65537 (0x010001)
+ 
+ 
+ 
+ 
+# 인증서 서명 요청(Certificate signing request) 파일을 생성
+root@4f8c75cf7178:/etc/nginx# openssl req -new -key server.key -out server.csr
+ 
+ 
+ 
+ 
+-- 결과
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [AU]: KO
+string is too long, it needs to be no more than 2 bytes long
+Country Name (2 letter code) [AU]:KO
+State or Province Name (full name) [Some-State]:Seoul
+Locality Name (eg, city) []:Seoul
+Organization Name (eg, company) [Internet Widgits Pty Ltd]:
+Organizational Unit Name (eg, section) []:
+Common Name (e.g. server FQDN or YOUR name) []:medic.localhost.co.kr
+Email Address []:
+ 
+Please enter the following 'extra' attributes
+to be sent with your certificate request
+A challenge password []:
+An optional company name []:
+ 
+ 
+ 
+ 
+# 서버 인증서 파일을 생성
+root@4f8c75cf7178:/etc/nginx# openssl x509 -req -days 365 -in server.csr -signkey server.key -out server.crt
+ 
+ 
+ 
+ 
+-- 결과
+Signature ok
+subject=C = KO, ST = Seoul, L = Seoul, O = Internet Widgits Pty Ltd, CN = medic.localhost.co.kr
+Getting Private key
+conf.d/default.conf 에 ssl 설정 추가 
+
+root@4f8c75cf7178:/etc/nginx# vi conf.d/default.conf
+ 
+ 
+ssl_certificate        /etc/nginx/server.crt;
+ssl_certificate_key    /etc/nginx/server.key;
+nginx 재시작 
+
+root@4f8c75cf7178:/etc/nginx# /etc/init.d/nginx reload
+처리 후 결과 ... 
+
+
+conf.d/default.conf 의 서버명 변경 
+
+# listen 80m, 443 모두 변경
+server_name  medic.localhost.co.kr
+
+
+
+
+
+
+
+
+
+
